@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GESTIÓN DE ACTIVIDADES</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            margin: auto;
+            max-width: 1000px;
+            font-size: 18px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 14px;
+            font-size: 18px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 14px;
+            font-size: 18px;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .alineado {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 8px 0;
+            font-size: 18px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #mensaje {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: green;
+        }
+
+        @media (min-width: 768px) {
+            .grid-doble {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+            }
+
+            button {
+                width: fit-content;
+                align-self: start;
+            }
+        }
+
+        .titulo-principal {
+            text-align: center;
+            color: #17509D;
+            font-size: 36px; /* Aumentado al doble del tamaño original (24px a 48px) */
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        .botones-alineados {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .factura-label {
+            text-align: center;
+            margin-top: 10px;
+            display: block;
+        }
+
+        .prohinsa {
+            color: #F8AA19;
+        }
+
+        .proverepuestos {
+            color: #EC1A39;
+        }
+
+        .recalfreno {
+            color: #17509D;
+        }
+
+        .porland {
+            color: #F87B1E;
+        }
+
+        .factura-container {
+             margin-bottom: 15px;
+        }
+
+        .inicio {
+            background-color: #11F876;
+        }
+
+        .inicio:hover {
+            background-color: #0DB357;
+        }
+
+        .fin {
+            background-color: #F83E0D;
+        }
+
+        .fin:hover {
+            background-color: #D32102;
+        }
+
+        .exportar {
+            background-color: #647182;
+        }
+
+        .exportar:hover {
+            background-color: #4B5563;
+        }
+
+        .buscar {
+            background-color: #17509D;
+        }
+
+        .buscar:hover {
+            background-color: #123867;
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <h1 class="titulo-principal">GRUPO RECALFRENO</h1>
+    <h2>REGISTRO DE ACTIVIDADES</h2>
+    <form id="actividadForm" onsubmit="return false;">
+        <label for="codigo">CÓDIGO PERSONAL (EJ: A123)</label>
+        <input type="text" id="codigo" maxlength="4" style="text-transform: uppercase;" />
+        <label for="actividad">ESCOJA SU ACTIVIDAD</label>
+        <select id="actividad" onchange="mostrarCamposExtras()">
+            <option value="">--SELECCIONE--</option>
+            <option value="REVISION">REVISION</option>
+            <option>RUTA SUR</option>
+            <option>RUTA NORTE</option>
+            <option>RUTA VALLE</option>
+            <option>RUTA TERMINAL</option>
+            <option>RETIRO DE OFICINA</option>
+            <option>ORTIZ EXPRESS</option>
+            <option>ENETSA</option>
+            <option>OTRO TRANSPORTE O RUTA</option>
+            <option>GESTION DE BODEGA</option>
+        </select>
+        <div id="bodegaExtra" class="hidden">
+            <label>SELECCIONE SU TAREA (BODEGA)</label>
+            <div>
+                <label class="alineado"><input type="radio" name="tareaBodega" value="PERCHADO"> PERCHADO</label>
+                <label class="alineado"><input type="radio" name="tareaBodega" value="EMPACADO"> EMPACADO</label>
+                <label class="alineado"><input type="radio" name="tareaBodega" value="CORTAR MANGUERA"> CORTAR MANGUERA</label>
+                <label class="alineado"><input type="radio" name="tareaBodega" value="TOMAR FOTOS"> TOMAR FOTOS</label>
+                <label class="alineado"><input type="radio" name="tareaBodega" value="LIMPIEZA"> LIMPIEZA</label>
+                <label class="alineado"><input type="radio" name="tareaBodega" value="ARREGLO DE PERCHAS"> ARREGLO DE PERCHAS</label>
+                <label class="alineado"><input type="radio" name="tareaBodega" value="INVENTARIO"> INVENTARIO</label>
+                <label class="alineado"><input type="radio" name="tareaBodega" value="OTROS" onchange="mostrarCampoOtros(this)"> OTROS</label>
+            </div>
+            <div id="campoOtros" class="hidden">
+                <label>ESPECIFIQUE SU TAREA</label>
+                <input type="text" id="tareaOtros" style="text-transform: uppercase;" />
+            </div>
+        </div>
+        <div id="camposExtras" class="hidden">
+            <h4>DATOS DE FACTURACIÓN</h4>
+            <div id="facturas" class="grid-doble"></div>
+        </div>
+        <div id="checklistTareas" class="hidden">
+            <h4>TAREAS PENDIENTES</h4>
+            <div id="listaTareas"></div>
+        </div>
+        <div class="botones-alineados">
+            <button type="button" onclick="registrarInicio()" class="inicio">INICIO</button>
+            <button type="button" onclick="buscarTarea()" class="buscar">BUSCAR TAREA</button>
+            <button type="button" onclick="finalizarTarea()" class="fin">FIN</button>
+            <button type="button" onclick="exportarExcel()" class="exportar">EXPORTAR A EXCEL</button>
+        </div>
+    </form>
+    <p id="mensaje"></p>
+    <script>
+        const camposFactura = ["PROHINSA", "PROVEREPUESTOS", "RECALFRENO", "PORLAND"];
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrYf-uqL-QY71vsNM560YqgAKRlTi1M0U",
+            authDomain: "registro-de-actividades-25c73.firebaseapp.com",
+            databaseURL: "https://registro-de-actividades-25c73-default-rtdb.firebaseio.com/",
+            projectId: "registro-de-actividades-25c73",
+            storageBucket: "registro-de-actividades-25c73.appspot.com",
+            messagingSenderId: "584517049071",
+            appId: "1:584517049071:web:2102394072488f637cd91a"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function mostrarCamposExtras() {
+            const actividad = document.getElementById("actividad").value;
+            const extras = document.getElementById("camposExtras");
+            const bodega = document.getElementById("bodegaExtra");
+            const contenedorFacturas = document.getElementById("facturas");
+
+            if (actividad === "GESTION DE BODEGA") {
+                extras.classList.add("hidden");
+                bodega.classList.remove("hidden");
+            } else if (actividad === "REVISION") { // Mostrar campos específicos para REVISION
+                extras.classList.remove("hidden");
+                bodega.classList.add("hidden");
+                contenedorFacturas.innerHTML = `
+                    <div class="factura-container">
+                        <label>INGRESE UN SOLO NÚMERO DE FACTURA</label>
+                        <input type="text" id="facturaRevision" maxlength="6" style="text-transform: uppercase;" />
+                        <label>INGRESE EL NÚMERO DE FACTURAS A REVISAR</label>
+                        <input type="number" id="numFacturasRevision" min="0" />
+                        <label>INGRESE EL NOMBRE DE LA PERSONA QUE SEPARÓ EL PEDIDO</label>
+                        <input type="text" id="nombreSeparador" style="text-transform: uppercase;"/>
+                    </div>
+                `;
+            }
+             else if (actividad !== "") {
+                extras.classList.remove("hidden");
+                bodega.classList.add("hidden");
+                contenedorFacturas.innerHTML = "";
+                camposFactura.forEach(nombre => {
+                    let claseColor = '';
+                    if (nombre === "PROHINSA") {
+                        claseColor = "prohinsa";
+                    } else if (nombre === "PROVEREPUESTOS") {
+                        claseColor = "proverepuestos";
+                    } else if (nombre === "RECALFRENO") {
+                        claseColor = "recalfreno";
+                    } else if (nombre === "PORLAND") {
+                        claseColor = "porland";
+                    }
+                    contenedorFacturas.innerHTML += `
+                        <div class="factura-container">
+                            <label class="factura-label ${claseColor}">FACTURA ${nombre}</label>
+                            <input type="text" id="factura${nombre}" maxlength="6" placeholder="EJ: S12345" style="text-transform: uppercase;" />
+                            <label class="factura-label ${claseColor}">ITEMS ${nombre}</label>
+                            <input type="number" id="items${nombre}" min="0" />
+                        </div>
+                    `;
+                });
+            }
+            else {
+                extras.classList.add("hidden");
+                bodega.classList.add("hidden");
+            }
+        }
+
+        function mostrarCampoOtros(checkbox) {
+            const campo = document.getElementById("campoOtros");
+            campo.classList.toggle("hidden", !checkbox.checked);
+        }
+
+        function validarCodigo(codigo) {
+            return /^[A-Z]{1}\d{3}$/.test(codigo);
+        }
+
+        function validarFactura(valor) {
+            return /^S\d{5}$/.test(valor);
+        }
+        
+        function validarNombre(nombre) {
+            return /^[a-zA-Z\s]+$/.test(nombre);
+        }
+
+        function registrarInicio() {
+            const codigo = document.getElementById("codigo").value.trim().toUpperCase();
+            const actividad = document.getElementById("actividad").value;
+            const mensaje = document.getElementById("mensaje");
+
+            if (!validarCodigo(codigo)) {
+                mensaje.textContent = "CÓDIGO INCORRECTO";
+                return;
+            }
+
+            if (!actividad) {
+                mensaje.textContent = "SELECCIONE UNA ACTIVIDAD";
+                return;
+            }
+
+            let datos = { codigo, actividad, timestamp: new Date().toISOString() };
+
+            if (actividad === "GESTION DE BODEGA") {
+                const seleccion = document.querySelector('input[name="tareaBodega"]:checked');
+                const tareaSeleccionada = seleccion ? seleccion.value : null;
+                const tareaOtros = document.getElementById("tareaOtros").value.trim().toUpperCase();
+
+                if (!tareaSeleccionada) {
+                    mensaje.textContent = "SELECCIONE UNA TAREA DE BODEGA";
+                    return;
+                }
+
+                if (tareaSeleccionada === "OTROS" && !tareaOtros) {
+                    mensaje.textContent = "DEBE ESPECIFICAR LA TAREA EN OTROS";
+                    return;
+                }
+
+                datos.actividadBodega = tareaSeleccionada + (tareaOtros ? ` - ${tareaOtros}` : "");
+            } else if (actividad === "REVISION") { // Guardar datos específicos de REVISION
+                const facturaRevision = document.getElementById("facturaRevision").value.trim().toUpperCase();
+                const numFacturasRevision = document.getElementById("numFacturasRevision").value;
+                const nombreSeparador = document.getElementById("nombreSeparador").value.trim();
+                
+                if (!validarFactura(facturaRevision))
+                {
+                    mensaje.textContent = "EL NÚMERO DE FACTURA DEBE TENER EL FORMATO SXXXXX";
+                    return;
+                }
+                if (!numFacturasRevision || parseInt(numFacturasRevision) <= 0)
+                {
+                    mensaje.textContent = "DEBE INGRESAR UN NÚMERO DE FACTURAS A REVISAR MAYOR A 0";
+                    return;
+                }
+                if (!validarNombre(nombreSeparador))
+                {
+                    mensaje.textContent= "EL NOMBRE DE LA PERSONA DEBE CONTENER SOLO LETRAS";
+                    return;
+                }
+
+                datos.facturaRevision = facturaRevision;
+                datos.numFacturasRevision = parseInt(numFacturasRevision);
+                datos.nombreSeparador = nombreSeparador;
+
+            }else {
+                let algunaFactura = false;
+                for (let nombre of camposFactura) {
+                    const factura = document.getElementById(`factura${nombre}`).value.trim().toUpperCase();
+                    const items = document.getElementById(`items${nombre}`).value;
+                    if (factura || items) algunaFactura = true;
+                    if (factura && !validarFactura(factura)) {
+                        mensaje.textContent = `DATOS INCORRECTOS EN ${nombre}`;
+                        return;
+                    }
+                    datos[`factura${nombre}`] = factura;
+                    datos[`items${nombre}`] = parseInt(items) || 0;
+                }
+                if (!algunaFactura) {
+                    mensaje.textContent = "INGRESE TODOS LOS DATOS SOLICITADOS";
+                    return;
+                }
+            }
+
+            db.ref("actividades/" + codigo).push(datos)
+                .then(() => {
+                    mensaje.textContent = "TAREA REGISTRADA";
+                    document.getElementById("actividadForm").reset();
+                    document.getElementById("facturas").innerHTML = "";
+                    document.getElementById("camposExtras").classList.add("hidden");
+                    document.getElementById("bodegaExtra").classList.add("hidden");
+                    document.getElementById("campoOtros").classList.add("hidden");
+                })
+                .catch((error) => {
+                    console.error(error);
+                    mensaje.textContent = "ERROR AL REGISTRAR LA TAREA.";
+                });
+        }
+
+        function buscarTarea() {
+            const codigo = document.getElementById("codigo").value.trim().toUpperCase();
+            const mensaje = document.getElementById("mensaje");
+
+            if (!validarCodigo(codigo)) {
+                mensaje.textContent = "CÓDIGO INCORRECTO";
+                return;
+            }
+
+            db.ref("actividades/" + codigo).once("value")
+                .then(snapshot => {
+                    const data = snapshot.val();
+                    if (!data) {
+                        mensaje.textContent = "NO DISPONE DE TAREAS";
+                        return;
+                    }
+
+                    const listaTareas = document.getElementById("listaTareas");
+                    listaTareas.innerHTML = "";
+                    let hayPendientes = false;
+
+                    for (let key in data) {
+                        const tarea = data[key];
+                        if (!tarea.estado || tarea.estado !== "finalizado") {
+                            hayPendientes = true;
+                            let descripcion = "";
+                            if (tarea.actividad === "GESTION DE BODEGA" && tarea.actividadBodega)
+                            {
+                                descripcion = `${tarea.actividad}: ${tarea.actividadBodega}`;
+                            }
+                            else if (tarea.actividad === "REVISION")
+                            {
+                                descripcion = `${tarea.actividad} - Factura: ${tarea.facturaRevision},  Facturas a revisar: ${tarea.numFacturasRevision}, Separador: ${tarea.nombreSeparador}`;
+                            }
+                            else{
+                                descripcion = tarea.actividad;
+                            }
+                            const label = document.createElement("label");
+                            label.className = "alineado";
+                            label.innerHTML = `
+                                <input type="radio" name="tareaSeleccionada" value="${key}" />
+                                ${descripcion} (${new Date(tarea.timestamp).toLocaleString()})
+                            `;
+                            listaTareas.appendChild(label);
+                        }
+                    }
+
+                    if (hayPendientes) {
+                        mensaje.textContent = "TAREAS PENDIENTES ENCONTRADAS";
+                        document.getElementById("checklistTareas").classList.remove("hidden");
+                    } else {
+                        mensaje.textContent = "NO DISPONE DE TAREAS PENDIENTES";
+                        document.getElementById("checklistTareas").classList.add("hidden");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error en la solicitud:', error);
+                    mensaje.textContent = "HUBO UN ERROR AL BUSCAR LA TAREA.";
+                });
+        }
+
+        function finalizarTarea() {
+            const codigo = document.getElementById("codigo").value.trim().toUpperCase();
+            const mensaje = document.getElementById("mensaje");
+            const tareaSeleccionada = document.querySelector('input[name="tareaSeleccionada"]:checked');
+
+            if (!validarCodigo(codigo)) {
+                mensaje.textContent = "CÓDIGO INCORRECTO";
+                return;
+            }
+
+            if (!tareaSeleccionada) {
+                mensaje.textContent = "SELECCIONE UNA TAREA PARA FINALIZAR";
+                return;
+            }
+
+            const key = tareaSeleccionada.value;
+
+            db.ref(`actividades/${codigo}/${key}`).update({
+                estado: "finalizado",
+                timestampFinalizacion: new Date().toISOString()
+            })
+            .then(() => {
+                mensaje.textContent = "TAREA FINALIZADA";
+                document.getElementById("actividadForm").reset();
+                document.getElementById("facturas").innerHTML = "";
+                document.getElementById("camposExtras").classList.add("hidden");
+                document.getElementById("bodegaExtra").classList.add("hidden");
+                document.getElementById("campoOtros").classList.add("hidden");
+                document.getElementById("checklistTareas").classList.add("hidden");
+            })
+            .catch(error => {
+                console.error("Error al finalizar tarea:", error);
+                mensaje.textContent = "ERROR AL FINALIZAR LA TAREA.";
+            });
+        }
+
+function exportarExcel() {
+  const clave = prompt("INGRESE LA CLAVE DE ADMINISTRADOR:");
+  if (clave !== "InvRecal2025") {
+    document.getElementById("mensaje").textContent =
+      "CLAVE INCORRECTA FUNCIÓN ADMITIDA PARA ADMINISTRADORES";
+    return;
+  }
+  const mensaje = document.getElementById("mensaje");
+  mensaje.textContent = "EXPORTANDO...";
+  db.ref("actividades")
+    .once("value")
+    .then((snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
+        mensaje.textContent = "NO HAY DATOS PARA EXPORTAR";
+        return;
+      }
+      const registros = [];
+      for (let codigo in data) {
+        for (let id in data[codigo]) {
+          const tarea = data[codigo][id];
+          // Formateo de fechas
+          const formatoFecha = (fechaISO) => {
+            const f = new Date(fechaISO);
+            return f.toLocaleString("es-ES"); // Esto da: 07/05/2025, 11:05:20
+          };
+          registros.push({
+            "CÓDIGO": codigo,
+            "ACTIVIDAD": tarea.actividad,
+            "ACTIVIDAD BODEGA": tarea.actividadBodega || "",
+            "FACTURA PROHINSA": tarea.facturaPROHINSA || "",
+            "ITEMS PROHINSA": tarea.itemsPROHINSA || 0,
+            "FACTURA PROVEREPUESTOS": tarea.facturaPROVEREPUESTOS || "",
+            "ITEMS PROVEREPUESTOS": tarea.itemsPROVEREPUESTOS || 0,
+            "FACTURA RECALFRENO": tarea.facturaRECALFRENO || "",
+            "ITEMS RECALFRENO": tarea.itemsRECALFRENO || 0,
+            "FACTURA PORLAND": tarea.facturaPORLAND || "",
+            "ITEMS PORLAND": tarea.itemsPORLAND || 0,
+            "INICIO": formatoFecha(tarea.timestamp),
+            "FIN": tarea.timestampFinalizacion ? formatoFecha(tarea.timestampFinalizacion) : "",
+            "ESTADO": tarea.estado || "PENDIENTE",
+            "FACTURA REVISION": tarea.facturaRevision || "",
+            "NUM FACTURAS REVISION": tarea.numFacturasRevision || 0,
+            "NOMBRE SEPARADOR": tarea.nombreSeparador || "",
+          });
+        }
+      }
+      // Ordenar por fecha de inicio
+      registros.sort((a, b) => {
+        const fechaA = new Date(a["INICIO"]);
+        const fechaB = new Date(b["INICIO"]);
+        return fechaA - fechaB;
+      });
+      const ws = XLSX.utils.json_to_sheet(registros);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "ACTIVIDADES");
+      const fecha = new Date().toISOString().split("T")[0];
+      const nombreArchivo = `REGISTRO DE ACTIVIDADES (${fecha}).xlsx`;
+      XLSX.writeFile(wb, nombreArchivo);
+      mensaje.textContent = "DATOS EXPORTADOS EXITOSAMENTE";
+    })
+    .catch((error) => {
+      console.error("Error al exportar:", error);
+      mensaje.textContent = "ERROR AL EXPORTAR LOS DATOS";
+    });
+}
+    </script>
+</body>
+</html>
