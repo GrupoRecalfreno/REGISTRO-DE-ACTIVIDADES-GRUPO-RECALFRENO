@@ -20,18 +20,37 @@
 
         label {
             margin-top: 15px;
-            font-weight: bold;
+            font-weight: bold; /* Enunciados en negrita */
         }
 
         input[type="text"],
         input[type="number"],
         select {
             width: 100%;
-            padding: 14px;
-            font-size: 18px;
+            padding: 10px; /* Reducido para hacer el campo más pequeño */
+            font-size: 16px; /* Reducido para hacer el campo más pequeño */
             margin-top: 5px;
             border: 1px solid #ccc;
             border-radius: 6px;
+            box-sizing: border-box; /* Asegura que padding no aumente el ancho total */
+        }
+
+        /* Contenedor principal para el código y el nombre */
+        #codigoInputGroup {
+            margin-top: 15px; /* Margen superior para el grupo del código */
+        }
+
+        /* Contenedor para el input y el nombre en la misma línea */
+        #codigoRow {
+            display: flex;
+            align-items: center; /* Alinea verticalmente el input y el nombre */
+            gap: 10px; /* Espacio entre el input y el nombre */
+            margin-top: 5px; /* Pequeño margen entre la label y el input/nombre */
+        }
+
+        #codigo {
+            flex-grow: 0; /* No crece para ocupar todo el espacio */
+            width: 120px; /* Ancho fijo para el input del código */
         }
 
         button {
@@ -212,11 +231,32 @@
 
         /* Anchos de columna para el encabezado y las filas */
         #tareasPendientesTable th:nth-child(1),
-        #tareasPendientesTable td:nth-child(1) { width: 20%; text-align: left; } /* CÓDIGO */
+        #tareasPendientesTable td:nth-child(1) { width: 15%; text-align: left; } /* CÓDIGO */
         #tareasPendientesTable th:nth-child(2),
-        #tareasPendientesTable td:nth-child(2) { width: 40%; text-align: center; } /* INICIO */
+        #tareasPendientesTable td:nth-child(2) { width: 25%; text-align: left; } /* RESPONSABLE */
         #tareasPendientesTable th:nth-child(3),
-        #tareasPendientesTable td:nth-child(3) { width: 40%; text-align: left; } /* ACTIVIDAD */
+        #tareasPendientesTable td:nth-child(3) { width: 30%; text-align: center; } /* INICIO */
+        #tareasPendientesTable th:nth-child(4),
+        #tareasPendientesTable td:nth-child(4) { width: 30%; text-align: left; } /* ACTIVIDAD */
+
+        #nombreResponsable {
+            font-size: 1em; /* Mismo tamaño que el input */
+            font-weight: bold;
+            color: #17509D;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-shrink: 1; /* Permite que se encoja si el espacio es muy limitado */
+            flex-grow: 1; /* Permite que crezca para ocupar espacio disponible */
+        }
+        #nombreResponsable.error {
+            color: red;
+        }
+
+        /* Espacio entre los bloques */
+        .gap-20px {
+            margin-bottom: 20px;
+        }
 
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -227,9 +267,15 @@
     <h1 class="titulo-principal">GRUPO RECALFRENO</h1>
     <h2>REGISTRO DE ACTIVIDADES</h2>
     <form id="actividadForm" onsubmit="return false;">
-        <label for="codigo">CÓDIGO PERSONAL (EJ: A123)</label>
-        <input type="text" id="codigo" maxlength="4" style="text-transform: uppercase;" />
-        <label for="actividad">ESCOJA SU ACTIVIDAD</label>
+        <div id="codigoInputGroup">
+            <label for="codigo">CÓDIGO PERSONAL (EJ: A123)</label>
+            <div id="codigoRow">
+                <input type="text" id="codigo" maxlength="4" style="text-transform: uppercase;" onkeyup="verificarCodigoPersonal()" />
+                <span id="nombreResponsable"></span>
+            </div>
+        </div>
+
+        <div class="gap-20px"></div> <label for="actividad">ESCOJA SU ACTIVIDAD</label>
         <select id="actividad" onchange="mostrarCamposExtras()">
             <option value="">--SELECCIONE--</option>
             <option value="REVISION">REVISION</option>
@@ -280,6 +326,7 @@
                 <thead>
                     <tr>
                         <th>CÓDIGO</th>
+                        <th>RESPONSABLE</th>
                         <th>INICIO</th>
                         <th>ACTIVIDAD</th>
                     </tr>
@@ -303,6 +350,38 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        let personalNombresGlobal = {}; // Variable global para almacenar los nombres de personal
+
+        // Cargar nombres de personal al iniciar la aplicación
+        db.ref("personal").once("value")
+            .then(snapshot => {
+                personalNombresGlobal = snapshot.val() || {};
+            })
+            .catch(error => {
+                console.error("Error al cargar datos de personal:", error);
+                document.getElementById("mensaje").textContent = "Error al cargar datos de personal: " + error.message;
+            });
+
+        // Nueva función para verificar el código personal y mostrar el nombre
+        function verificarCodigoPersonal() {
+            const codigoInput = document.getElementById("codigo");
+            const nombreResponsableSpan = document.getElementById("nombreResponsable");
+            const codigo = codigoInput.value.trim().toUpperCase();
+
+            if (validarCodigo(codigo)) {
+                if (personalNombresGlobal[codigo]) {
+                    nombreResponsableSpan.textContent = `(${personalNombresGlobal[codigo]})`;
+                    nombreResponsableSpan.classList.remove("error");
+                } else {
+                    nombreResponsableSpan.textContent = "(CÓDIGO NO REGISTRADO)";
+                    nombreResponsableSpan.classList.add("error");
+                }
+            } else {
+                nombreResponsableSpan.textContent = ""; // Limpiar si el formato es incorrecto
+                nombreResponsableSpan.classList.remove("error");
+            }
+        }
+
 
         function mostrarCamposExtras() {
             const actividad = document.getElementById("actividad").value;
@@ -313,7 +392,7 @@
             if (actividad === "GESTION DE BODEGA") {
                 extras.classList.add("hidden");
                 bodega.classList.remove("hidden");
-            } else if (actividad === "REVISION") { // Mostrar campos específicos para REVISION
+            } else if (actividad === "REVISION") {
                 extras.classList.remove("hidden");
                 bodega.classList.add("hidden");
                 contenedorFacturas.innerHTML = `
@@ -356,7 +435,6 @@
                 extras.classList.add("hidden");
                 bodega.classList.add("hidden");
             }
-            // Asegurarse de ocultar el listado global de tareas pendientes al cambiar la actividad
             document.getElementById("listadoTodasTareasPendientesContainer").classList.add("hidden");
             document.getElementById("checklistTareas").classList.add("hidden");
         }
@@ -373,7 +451,7 @@
         function validarFactura(valor) {
             return /^S\d{5}$/.test(valor);
         }
-        
+
         function validarNombre(nombre) {
             return /^[a-zA-Z\s]+$/.test(nombre);
         }
@@ -383,7 +461,6 @@
             const actividad = document.getElementById("actividad").value;
             const mensaje = document.getElementById("mensaje");
 
-            // Ocultar listados al iniciar una nueva tarea
             document.getElementById("listadoTodasTareasPendientesContainer").classList.add("hidden");
             document.getElementById("checklistTareas").classList.add("hidden");
 
@@ -392,6 +469,13 @@
                 mensaje.textContent = "CÓDIGO INCORRECTO";
                 return;
             }
+
+            // Validar que el código esté registrado antes de registrar una tarea
+            if (!personalNombresGlobal[codigo]) {
+                mensaje.textContent = "CÓDIGO NO REGISTRADO. INGRESE UN CÓDIGO VÁLIDO.";
+                return;
+            }
+
 
             if (!actividad) {
                 mensaje.textContent = "SELECCIONE UNA ACTIVIDAD";
@@ -420,7 +504,7 @@
                 const facturaRevision = document.getElementById("facturaRevision").value.trim().toUpperCase();
                 const numFacturasRevision = document.getElementById("numFacturasRevision").value;
                 const nombreSeparador = document.getElementById("nombreSeparador").value.trim();
-                
+
                 if (!validarFactura(facturaRevision))
                 {
                     mensaje.textContent = "EL NÚMERO DE FACTURA DEBE TENER EL FORMATO SXXXXX";
@@ -468,6 +552,7 @@
                     document.getElementById("camposExtras").classList.add("hidden");
                     document.getElementById("bodegaExtra").classList.add("hidden");
                     document.getElementById("campoOtros").classList.add("hidden");
+                    document.getElementById("nombreResponsable").textContent = ""; // Limpiar el nombre del responsable
                 })
                 .catch((error) => {
                     console.error(error);
@@ -479,7 +564,6 @@
             const codigo = document.getElementById("codigo").value.trim().toUpperCase();
             const mensaje = document.getElementById("mensaje");
 
-            // Ocultar el listado global de tareas pendientes al buscar tarea individual
             document.getElementById("listadoTodasTareasPendientesContainer").classList.add("hidden");
 
 
@@ -546,7 +630,6 @@
             const mensaje = document.getElementById("mensaje");
             const tareaSeleccionada = document.querySelector('input[name="tareaSeleccionada"]:checked');
 
-            // Ocultar listados al finalizar una tarea
             document.getElementById("listadoTodasTareasPendientesContainer").classList.add("hidden");
             document.getElementById("checklistTareas").classList.add("hidden");
 
@@ -574,6 +657,7 @@
                 document.getElementById("camposExtras").classList.add("hidden");
                 document.getElementById("bodegaExtra").classList.add("hidden");
                 document.getElementById("campoOtros").classList.add("hidden");
+                document.getElementById("nombreResponsable").textContent = ""; // Limpiar el nombre del responsable
             })
             .catch(error => {
                 console.error("Error al finalizar tarea:", error);
@@ -581,92 +665,90 @@
             });
         }
 
-function exportarExcel() {
-  const clave = prompt("INGRESE LA CLAVE DE ADMINISTRADOR:");
-  if (clave !== "InvRecal2025") {
-    document.getElementById("mensaje").textContent =
-      "CLAVE INCORRECTA FUNCIÓN ADMITIDA PARA ADMINISTRADORES";
-    return;
-  }
-  const mensaje = document.getElementById("mensaje");
-  mensaje.textContent = "EXPORTANDO...";
-  // Ocultar listados al exportar
-  document.getElementById("listadoTodasTareasPendientesContainer").classList.add("hidden");
-  document.getElementById("checklistTareas").classList.add("hidden");
+        function exportarExcel() {
+            const clave = prompt("INGRESE LA CLAVE DE ADMINISTRADOR:");
+            if (clave !== "InvRecal2025") {
+                document.getElementById("mensaje").textContent = "CLAVE INCORRECTA FUNCIÓN ADMITIDA PARA ADMINISTRADORES";
+                return;
+            }
+            const mensaje = document.getElementById("mensaje");
+            mensaje.textContent = "EXPORTANDO...";
+            document.getElementById("listadoTodasTareasPendientesContainer").classList.add("hidden");
+            document.getElementById("checklistTareas").classList.add("hidden");
 
-  db.ref("actividades")
-    .once("value")
-    .then((snapshot) => {
-      const data = snapshot.val();
-      if (!data) {
-        mensaje.textContent = "NO HAY DATOS PARA EXPORTAR";
-        return;
-      }
-      const registros = [];
-      for (let codigo in data) {
-        for (let id in data[codigo]) {
-          const tarea = data[codigo][id];
-          // Formateo de fechas
-          const formatoFecha = (fechaISO) => {
-            const f = new Date(fechaISO);
-            return f.toLocaleString("es-ES"); // Esto da: 07/05/2025, 11:05:20
-          };
-          registros.push({
-            "CÓDIGO": codigo,
-            "ACTIVIDAD": tarea.actividad,
-            "ACTIVIDAD BODEGA": tarea.actividadBodega || "",
-            "FACTURA PROHINSA": tarea.facturaPROHINSA || "",
-            "ITEMS PROHINSA": tarea.itemsPROHINSA || 0,
-            "FACTURA PROVEREPUESTOS": tarea.facturaPROVEREPUESTOS || "",
-            "ITEMS PROVEREPUESTOS": tarea.itemsPROVEREPUESTOS || 0,
-            "FACTURA RECALFRENO": tarea.facturaRECALFRENO || "",
-            "ITEMS RECALFRENO": tarea.itemsRECALFRENO || 0,
-            "FACTURA PORLAND": tarea.facturaPORLAND || "",
-            "ITEMS PORLAND": tarea.itemsPORLAND || 0,
-            "INICIO": formatoFecha(tarea.timestamp),
-            "FIN": tarea.timestampFinalizacion ? formatoFecha(tarea.timestampFinalizacion) : "",
-            "ESTADO": tarea.estado || "PENDIENTE",
-            "FACTURA REVISION": tarea.facturaRevision || "",
-            "NUM FACTURAS REVISION": tarea.numFacturasRevision || 0,
-            "NOMBRE SEPARADOR": tarea.nombreSeparador || "",
-          });
+            db.ref("actividades").once("value")
+                .then((snapshot) => {
+                    const data = snapshot.val();
+                    if (!data) {
+                        mensaje.textContent = "NO HAY DATOS PARA EXPORTAR";
+                        return;
+                    }
+                    const registros = [];
+                    for (let codigo in data) {
+                        for (let id in data[codigo]) {
+                            const tarea = data[codigo][id];
+                            const formatoFecha = (fechaISO) => {
+                                const f = new Date(fechaISO);
+                                return f.toLocaleString("es-ES");
+                            };
+
+                            const nombreResponsable = personalNombresGlobal[codigo] || "DESCONOCIDO";
+
+                            registros.push({
+                                "CÓDIGO": codigo,
+                                "RESPONSABLE": nombreResponsable,
+                                "ACTIVIDAD": tarea.actividad,
+                                "ACTIVIDAD BODEGA": tarea.actividadBodega || "",
+                                "FACTURA PROHINSA": tarea.facturaPROHINSA || "",
+                                "ITEMS PROHINSA": tarea.itemsPROHINSA || 0,
+                                "FACTURA PROVEREPUESTOS": tarea.facturaPROVEREPUESTOS || "",
+                                "ITEMS PROVEREPUESTOS": tarea.itemsPROVEREPUESTOS || 0,
+                                "FACTURA RECALFRENO": tarea.facturaRECALFRENO || "",
+                                "ITEMS RECALFRENO": tarea.itemsRECALFRENO || 0,
+                                "FACTURA PORLAND": tarea.facturaPORLAND || "",
+                                "ITEMS PORLAND": tarea.itemsPORLAND || 0,
+                                "INICIO": formatoFecha(tarea.timestamp),
+                                "FIN": tarea.timestampFinalizacion ? formatoFecha(tarea.timestampFinalizacion) : "",
+                                "ESTADO": tarea.estado || "PENDIENTE",
+                                "FACTURA REVISION": tarea.facturaRevision || "",
+                                "NUM FACTURAS REVISION": tarea.numFacturasRevision || 0,
+                                "NOMBRE SEPARADOR": tarea.nombreSeparador || "",
+                            });
+                        }
+                    }
+                    registros.sort((a, b) => {
+                        const fechaA = new Date(a["INICIO"]);
+                        const fechaB = new Date(b["INICIO"]);
+                        return fechaA - fechaB;
+                    });
+                    const ws = XLSX.utils.json_to_sheet(registros);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "ACTIVIDADES");
+                    const fecha = new Date().toISOString().split("T")[0];
+                    const nombreArchivo = `REGISTRO DE ACTIVIDADES (${fecha}).xlsx`;
+                    XLSX.writeFile(wb, nombreArchivo);
+                    mensaje.textContent = "DATOS EXPORTADOS EXITOSAMENTE";
+                })
+                .catch((error) => {
+                    console.error("Error al exportar:", error);
+                    mensaje.textContent = "ERROR AL EXPORTAR LOS DATOS";
+                });
         }
-      }
-      // Ordenar por fecha de inicio
-      registros.sort((a, b) => {
-        const fechaA = new Date(a["INICIO"]);
-        const fechaB = new Date(b["INICIO"]);
-        return fechaA - fechaB;
-      });
-      const ws = XLSX.utils.json_to_sheet(registros);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "ACTIVIDADES");
-      const fecha = new Date().toISOString().split("T")[0];
-      const nombreArchivo = `REGISTRO DE ACTIVIDADES (${fecha}).xlsx`;
-      XLSX.writeFile(wb, nombreArchivo);
-      mensaje.textContent = "DATOS EXPORTADOS EXITOSAMENTE";
-    })
-    .catch((error) => {
-      console.error("Error al exportar:", error);
-      mensaje.textContent = "ERROR AL EXPORTAR LOS DATOS";
-    });
-}
 
-        // Nueva función para mostrar TODAS las tareas pendientes
         function mostrarTodasTareasPendientes() {
             const mensaje = document.getElementById("mensaje");
             const listadoTodasTareasPendientesContainer = document.getElementById("listadoTodasTareasPendientesContainer");
             const tareasPendientesTbody = document.querySelector("#tareasPendientesTable tbody");
 
-            // Ocultar todos los otros campos y listados
-            document.getElementById("actividadForm").reset(); // Limpiar formulario
+            document.getElementById("actividadForm").reset();
             document.getElementById("camposExtras").classList.add("hidden");
             document.getElementById("bodegaExtra").classList.add("hidden");
             document.getElementById("campoOtros").classList.add("hidden");
             document.getElementById("checklistTareas").classList.add("hidden");
-            document.getElementById("facturas").innerHTML = ""; // Limpiar contenido dinámico
+            document.getElementById("facturas").innerHTML = "";
+            document.getElementById("nombreResponsable").textContent = ""; // Limpiar el nombre del responsable al mostrar el listado
 
-            tareasPendientesTbody.innerHTML = ""; // Limpiar listado anterior
+            tareasPendientesTbody.innerHTML = "";
             mensaje.textContent = "Cargando tareas pendientes...";
 
             db.ref("actividades").once("value")
@@ -681,7 +763,8 @@ function exportarExcel() {
                                 if (!tarea.estado || tarea.estado !== "finalizado") {
                                     tareasPendientesArray.push({
                                         codigo: codigoUsuario,
-                                        horaInicio: new Date(tarea.timestamp), // Almacenar como objeto Date para ordenar
+                                        nombreResponsable: personalNombresGlobal[codigoUsuario] || "DESCONOCIDO",
+                                        horaInicio: new Date(tarea.timestamp),
                                         actividad: tarea.actividad,
                                         actividadBodega: tarea.actividadBodega || '',
                                         facturaRevision: tarea.facturaRevision || 'N/A',
@@ -693,12 +776,11 @@ function exportarExcel() {
                         }
                     }
 
-                    // Ordenar por fecha de inicio (más reciente primero)
                     tareasPendientesArray.sort((a, b) => b.horaInicio.getTime() - a.horaInicio.getTime());
 
                     if (tareasPendientesArray.length > 0) {
                         tareasPendientesArray.forEach(tarea => {
-                            const tr = document.createElement("tr"); // Usar tr para filas de tabla
+                            const tr = document.createElement("tr");
                             const horaInicioFormateada = tarea.horaInicio.toLocaleString("es-ES", {
                                 year: 'numeric',
                                 month: 'numeric',
@@ -714,20 +796,20 @@ function exportarExcel() {
                             } else if (tarea.actividad === "REVISION") {
                                 actividadTexto += ` - Factura: ${tarea.facturaRevision}, Facturas a revisar: ${tarea.numFacturasRevision}, Separador: ${tarea.nombreSeparador}`;
                             }
-                            
-                            // Añadir celdas td para cada columna
+
                             tr.innerHTML = `
                                 <td>${tarea.codigo}</td>
+                                <td>${tarea.nombreResponsable}</td>
                                 <td>${horaInicioFormateada}</td>
                                 <td>${actividadTexto}</td>
                             `;
                             tareasPendientesTbody.appendChild(tr);
                         });
-                        
-                        listadoTodasTareasPendientesContainer.classList.remove("hidden"); // Mostrar el contenedor de la tabla
+
+                        listadoTodasTareasPendientesContainer.classList.remove("hidden");
                         mensaje.textContent = "Listado de todas las TAREAS PENDIENTES:";
                     } else {
-                        listadoTodasTareasPendientesContainer.classList.add("hidden"); // Ocultar si no hay tareas
+                        listadoTodasTareasPendientesContainer.classList.add("hidden");
                         mensaje.textContent = "No hay tareas pendientes en el sistema.";
                     }
                 })
