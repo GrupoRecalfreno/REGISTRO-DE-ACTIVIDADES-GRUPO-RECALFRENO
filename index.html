@@ -84,7 +84,7 @@
         .titulo-principal {
             text-align: center;
             color: #17509D;
-            font-size: 36px; /* Aumentado al doble del tamaño original (24px a 48px) */
+            font-size: 36px;
             margin-bottom: 20px;
         }
 
@@ -156,6 +156,68 @@
         .buscar:hover {
             background-color: #123867;
         }
+
+        /* Estilos para el nuevo botón y la tabla de tareas pendientes */
+        .tareas-pendientes-btn {
+            background-color: #5cb85c; /* Color verde */
+        }
+
+        .tareas-pendientes-btn:hover {
+            background-color: #4cae4c;
+        }
+
+        #listadoTodasTareasPendientesContainer {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+            overflow: hidden; /* Asegura que el borde se aplique bien */
+        }
+
+        #tareasPendientesTable {
+            width: 100%;
+            border-collapse: collapse; /* Elimina el espacio entre las celdas */
+        }
+
+        #tareasPendientesTable thead {
+            display: table; /* Hace que el thead se comporte como una tabla para anchos fijos */
+            width: 100%;
+            table-layout: fixed; /* Asegura que las columnas mantengan su ancho */
+            background-color: #e0e0e0;
+            font-weight: bold;
+            text-align: left;
+        }
+
+        #tareasPendientesTable th,
+        #tareasPendientesTable td {
+            padding: 10px;
+            border-bottom: 1px dotted #eee;
+            white-space: nowrap; /* Evita que el texto se rompa */
+            overflow: hidden; /* Oculta el contenido que excede */
+            text-overflow: ellipsis; /* Añade puntos suspensivos */
+        }
+
+        #tareasPendientesTable tbody {
+            display: block; /* Permite que el tbody tenga scroll independiente */
+            max-height: 180px; /* Aproximadamente 5 filas de 18px de fuente + padding */
+            overflow-y: auto;
+            width: 100%;
+        }
+
+        #tareasPendientesTable tr {
+            display: table; /* Hace que las filas se comporten como tablas para mantener el ancho */
+            width: 100%;
+            table-layout: fixed; /* Asegura que las columnas mantengan su ancho */
+        }
+
+        /* Anchos de columna para el encabezado y las filas */
+        #tareasPendientesTable th:nth-child(1),
+        #tareasPendientesTable td:nth-child(1) { width: 20%; text-align: left; } /* CÓDIGO */
+        #tareasPendientesTable th:nth-child(2),
+        #tareasPendientesTable td:nth-child(2) { width: 40%; text-align: center; } /* INICIO */
+        #tareasPendientesTable th:nth-child(3),
+        #tareasPendientesTable td:nth-child(3) { width: 40%; text-align: left; } /* ACTIVIDAD */
+
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -211,6 +273,20 @@
             <button type="button" onclick="buscarTarea()" class="buscar">BUSCAR TAREA</button>
             <button type="button" onclick="finalizarTarea()" class="fin">FIN</button>
             <button type="button" onclick="exportarExcel()" class="exportar">EXPORTAR A EXCEL</button>
+            <button type="button" onclick="mostrarTodasTareasPendientes()" class="tareas-pendientes-btn">TAREAS PENDIENTES</button>
+        </div>
+        <div id="listadoTodasTareasPendientesContainer" class="hidden">
+            <table id="tareasPendientesTable">
+                <thead>
+                    <tr>
+                        <th>CÓDIGO</th>
+                        <th>INICIO</th>
+                        <th>ACTIVIDAD</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
         </div>
     </form>
     <p id="mensaje"></p>
@@ -280,6 +356,9 @@
                 extras.classList.add("hidden");
                 bodega.classList.add("hidden");
             }
+            // Asegurarse de ocultar el listado global de tareas pendientes al cambiar la actividad
+            document.getElementById("listadoTodasTareasPendientesContainer").classList.add("hidden");
+            document.getElementById("checklistTareas").classList.add("hidden");
         }
 
         function mostrarCampoOtros(checkbox) {
@@ -303,6 +382,11 @@
             const codigo = document.getElementById("codigo").value.trim().toUpperCase();
             const actividad = document.getElementById("actividad").value;
             const mensaje = document.getElementById("mensaje");
+
+            // Ocultar listados al iniciar una nueva tarea
+            document.getElementById("listadoTodasTareasPendientesContainer").classList.add("hidden");
+            document.getElementById("checklistTareas").classList.add("hidden");
+
 
             if (!validarCodigo(codigo)) {
                 mensaje.textContent = "CÓDIGO INCORRECTO";
@@ -332,7 +416,7 @@
                 }
 
                 datos.actividadBodega = tareaSeleccionada + (tareaOtros ? ` - ${tareaOtros}` : "");
-            } else if (actividad === "REVISION") { // Guardar datos específicos de REVISION
+            } else if (actividad === "REVISION") {
                 const facturaRevision = document.getElementById("facturaRevision").value.trim().toUpperCase();
                 const numFacturasRevision = document.getElementById("numFacturasRevision").value;
                 const nombreSeparador = document.getElementById("nombreSeparador").value.trim();
@@ -395,6 +479,10 @@
             const codigo = document.getElementById("codigo").value.trim().toUpperCase();
             const mensaje = document.getElementById("mensaje");
 
+            // Ocultar el listado global de tareas pendientes al buscar tarea individual
+            document.getElementById("listadoTodasTareasPendientesContainer").classList.add("hidden");
+
+
             if (!validarCodigo(codigo)) {
                 mensaje.textContent = "CÓDIGO INCORRECTO";
                 return;
@@ -405,6 +493,7 @@
                     const data = snapshot.val();
                     if (!data) {
                         mensaje.textContent = "NO DISPONE DE TAREAS";
+                        document.getElementById("checklistTareas").classList.add("hidden");
                         return;
                     }
 
@@ -457,6 +546,11 @@
             const mensaje = document.getElementById("mensaje");
             const tareaSeleccionada = document.querySelector('input[name="tareaSeleccionada"]:checked');
 
+            // Ocultar listados al finalizar una tarea
+            document.getElementById("listadoTodasTareasPendientesContainer").classList.add("hidden");
+            document.getElementById("checklistTareas").classList.add("hidden");
+
+
             if (!validarCodigo(codigo)) {
                 mensaje.textContent = "CÓDIGO INCORRECTO";
                 return;
@@ -480,7 +574,6 @@
                 document.getElementById("camposExtras").classList.add("hidden");
                 document.getElementById("bodegaExtra").classList.add("hidden");
                 document.getElementById("campoOtros").classList.add("hidden");
-                document.getElementById("checklistTareas").classList.add("hidden");
             })
             .catch(error => {
                 console.error("Error al finalizar tarea:", error);
@@ -497,6 +590,10 @@ function exportarExcel() {
   }
   const mensaje = document.getElementById("mensaje");
   mensaje.textContent = "EXPORTANDO...";
+  // Ocultar listados al exportar
+  document.getElementById("listadoTodasTareasPendientesContainer").classList.add("hidden");
+  document.getElementById("checklistTareas").classList.add("hidden");
+
   db.ref("actividades")
     .once("value")
     .then((snapshot) => {
@@ -554,6 +651,92 @@ function exportarExcel() {
       mensaje.textContent = "ERROR AL EXPORTAR LOS DATOS";
     });
 }
+
+        // Nueva función para mostrar TODAS las tareas pendientes
+        function mostrarTodasTareasPendientes() {
+            const mensaje = document.getElementById("mensaje");
+            const listadoTodasTareasPendientesContainer = document.getElementById("listadoTodasTareasPendientesContainer");
+            const tareasPendientesTbody = document.querySelector("#tareasPendientesTable tbody");
+
+            // Ocultar todos los otros campos y listados
+            document.getElementById("actividadForm").reset(); // Limpiar formulario
+            document.getElementById("camposExtras").classList.add("hidden");
+            document.getElementById("bodegaExtra").classList.add("hidden");
+            document.getElementById("campoOtros").classList.add("hidden");
+            document.getElementById("checklistTareas").classList.add("hidden");
+            document.getElementById("facturas").innerHTML = ""; // Limpiar contenido dinámico
+
+            tareasPendientesTbody.innerHTML = ""; // Limpiar listado anterior
+            mensaje.textContent = "Cargando tareas pendientes...";
+
+            db.ref("actividades").once("value")
+                .then(snapshot => {
+                    const data = snapshot.val();
+                    let tareasPendientesArray = [];
+
+                    if (data) {
+                        for (let codigoUsuario in data) {
+                            for (let key in data[codigoUsuario]) {
+                                const tarea = data[codigoUsuario][key];
+                                if (!tarea.estado || tarea.estado !== "finalizado") {
+                                    tareasPendientesArray.push({
+                                        codigo: codigoUsuario,
+                                        horaInicio: new Date(tarea.timestamp), // Almacenar como objeto Date para ordenar
+                                        actividad: tarea.actividad,
+                                        actividadBodega: tarea.actividadBodega || '',
+                                        facturaRevision: tarea.facturaRevision || 'N/A',
+                                        numFacturasRevision: tarea.numFacturasRevision || '0',
+                                        nombreSeparador: tarea.nombreSeparador || 'N/A'
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    // Ordenar por fecha de inicio (más reciente primero)
+                    tareasPendientesArray.sort((a, b) => b.horaInicio.getTime() - a.horaInicio.getTime());
+
+                    if (tareasPendientesArray.length > 0) {
+                        tareasPendientesArray.forEach(tarea => {
+                            const tr = document.createElement("tr"); // Usar tr para filas de tabla
+                            const horaInicioFormateada = tarea.horaInicio.toLocaleString("es-ES", {
+                                year: 'numeric',
+                                month: 'numeric',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: true
+                            });
+                            let actividadTexto = tarea.actividad;
+                            if (tarea.actividad === "GESTION DE BODEGA" && tarea.actividadBodega) {
+                                actividadTexto += `: ${tarea.actividadBodega}`;
+                            } else if (tarea.actividad === "REVISION") {
+                                actividadTexto += ` - Factura: ${tarea.facturaRevision}, Facturas a revisar: ${tarea.numFacturasRevision}, Separador: ${tarea.nombreSeparador}`;
+                            }
+                            
+                            // Añadir celdas td para cada columna
+                            tr.innerHTML = `
+                                <td>${tarea.codigo}</td>
+                                <td>${horaInicioFormateada}</td>
+                                <td>${actividadTexto}</td>
+                            `;
+                            tareasPendientesTbody.appendChild(tr);
+                        });
+                        
+                        listadoTodasTareasPendientesContainer.classList.remove("hidden"); // Mostrar el contenedor de la tabla
+                        mensaje.textContent = "Listado de todas las TAREAS PENDIENTES:";
+                    } else {
+                        listadoTodasTareasPendientesContainer.classList.add("hidden"); // Ocultar si no hay tareas
+                        mensaje.textContent = "No hay tareas pendientes en el sistema.";
+                    }
+                })
+                .catch(error => {
+                    console.error("Error al buscar todas las tareas pendientes:", error);
+                    mensaje.textContent = "ERROR AL CARGAR LAS TAREAS PENDIENTES GLOBALES.";
+                    listadoTodasTareasPendientesContainer.classList.add("hidden");
+                });
+        }
     </script>
 </body>
 </html>
